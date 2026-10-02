@@ -65,7 +65,7 @@ export class TimingGraphPanel {
 
     private generateDotGraph(paths: TimingPath[]): string {
         let dot = 'digraph TimingPaths {\n';
-        dot += '  rankdir=LR;\n';
+        dot += '  rankdir=UD;\n';
         dot += '  node [shape=box, style=rounded, fontsize=10];\n';
         dot += '  edge [fontsize=9];\n';
         dot += '  graph [fontsize=10, compound=true];\n\n';
@@ -215,7 +215,7 @@ export class TimingGraphPanel {
         if (element.type === 'net') {
             // Simplified net label
             const netName = element.name.length > 30 ? '...' + element.name.slice(-27) : element.name;
-            return `Net\\n${delayType}\\n${element.delay.toFixed(3)}ns`;
+            return `${netName}\\n${element.resource}\\n${delayType}\\n${element.delay.toFixed(3)}ns`;
         } else {
             // Logic or clock element
             const cellType = element.resource || '';
@@ -224,7 +224,8 @@ export class TimingGraphPanel {
     }
 
     private getWebviewContent(svg: string): string {
-        return `<!DOCTYPE html>
+        const svg_only = svg;
+        const svg_all = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -436,6 +437,14 @@ export class TimingGraphPanel {
     </script>
 </body>
 </html>`;
+        const fs = require('fs');
+        fs.writeFile('svg_all.svg', svg_only, function(err : any) {
+            if (err) {
+                return console.error(err);
+            }
+            console.log("File created!");
+        });
+        return svg_all;
     }
 
     public dispose() {

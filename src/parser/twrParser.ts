@@ -137,7 +137,7 @@ export class TwrParser {
             }
             
             // Detect start of detailed path listing
-            if (line.includes('Location') && line.includes('Delay type') && line.includes('Netlist Resource')) {
+            if (line.includes('Location') && line.includes('Delay type') && line.includes('Physical Resource')) {
                 inDataPath = true;
                 inSourceClockPath = false;
                 inDestClockPath = false;
@@ -145,7 +145,7 @@ export class TwrParser {
             }
             
             // Detect clock section markers - source clock
-            if (line.match(/^\s*\(clock .+ rise edge\)/i)) {
+            //if (line.match(/^\s*\(clock .+ rise edge\)/i)) {
                 // Check if this is source or destination clock
                 const nextLine = lines[i + 1];
                 if (nextLine && currentPath) {
@@ -174,8 +174,8 @@ export class TwrParser {
                         inDataPath = false;
                     }
                 }
-                continue;
-            }
+                //continue;
+            //}
             
             // Parse clock path elements
             if ((inSourceClockPath || inDestClockPath) && line.trim().length > 0 && !line.includes('---')) {
@@ -191,7 +191,7 @@ export class TwrParser {
                     const resource = vivadoMatch[6] ? vivadoMatch[6].trim() : cellType;
                     
                     let type: 'logic' | 'net' | 'clock' = 'clock';
-                    if (cellType.includes('BUFG') || cellType.includes('MMCM') || cellType.includes('PLL') || cellType.includes('GTYE4')) {
+                    if (cellType.includes('BUFG') || cellType.includes('DCM') || cellType.includes('MMCM') ||cellType.includes('PLL') || cellType.includes('GTYE4')) {
                         type = 'clock';
                     }
                     
@@ -246,7 +246,7 @@ export class TwrParser {
             // ISE format:    "    SLICE_X12Y34.AQ      Tcko                  0.514   data_reg<0>"
             if (inDataPath && line.trim().length > 0 && !line.includes('---')) {
                 // Try Vivado format first (with Incr and Path columns)
-                const vivadoMatch = line.match(/^\s*(\S+)\s+([\w_]+)\s+\(([^)]+)\)\s+(-?\d+\.?\d+)\s+(-?\d+\.?\d+)\s+[rf]?\s*(.+)?$/);
+                const vivadoMatch = line.match(/.*SLICE_X[0-9]+Y[0-9]+\.CLK.*\s+(.+)?\s+(-?\d+\.?\d+)\s+(.+)?$/);
                 if (vivadoMatch) {
                     const location = vivadoMatch[1];
                     const cellType = vivadoMatch[2];
@@ -273,18 +273,19 @@ export class TwrParser {
                 }
                 
                 // Try net line format: "                     net (fo=2, routed)           3.077  1053.529    ..."
-                const netMatch = line.match(/^\s*net\s+\(([^)]+)\)\s+(-?\d+\.?\d+)\s+(-?\d+\.?\d+)\s+(.+)?$/);
+                //const netMatch = line.match(/^\s*net\s+\(([^)]+)\)\s+(-?\d+\.?\d+)\s+(-?\d+\.?\d+)\s+(.+)?$/);
+                const netMatch = line.match(/\s+(.+)?net \(fanout=([0-9]+)\)\s+(-?\d+\.?\d+)\s+(.+)?$/);
                 if (netMatch) {
-                    const fanout = netMatch[1];
-                    const incr = parseFloat(netMatch[2]);
-                    const pathTime = parseFloat(netMatch[3]);
+                    const fo = parseFloat(netMatch[2]);
+                    const time = parseFloat(netMatch[3]);
+                    const src = netMatch[1];
                     const netName = netMatch[4] ? netMatch[4].trim() : 'net';
                     
                     currentPath.pathElements?.push({
                         type: 'net',
-                        name: netName,
-                        delay: incr,
-                        delayType: `net ${fanout}`,
+                        name: src,
+                        delay: time,
+                        delayType: `net fanout=${fo}`,
                         resource: netName
                     });
                     continue;

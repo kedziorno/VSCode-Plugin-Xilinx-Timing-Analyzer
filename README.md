@@ -1,3 +1,10 @@
+# Update - fast fixes (tested on VSCodium and Xilinx ISE 14.7):
+- SVG output to file (in VSCodium installation)
+- SVG Up-Down direction
+![log output](log.jpg)
+![failing timing begin](outa.jpg)
+![failing timing end](outb.jpg)
+
 # Xilinx Timing Report Analyzer
 
 > NOTE: Every code and doc in this repo is created by **Github Copilot CLI** w/ **claude-sonnet-4.5** model
