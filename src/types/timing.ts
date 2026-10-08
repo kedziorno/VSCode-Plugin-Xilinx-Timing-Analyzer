@@ -21,6 +21,7 @@ export interface PathElement {
     location?: string;
     delayType?: string;
     resource?: string;
+    xy?: string;
 }
 
 export interface ClockPathInfo {

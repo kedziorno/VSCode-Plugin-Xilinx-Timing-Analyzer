@@ -246,14 +246,19 @@ export class TwrParser {
             // ISE format:    "    SLICE_X12Y34.AQ      Tcko                  0.514   data_reg<0>"
             if (inDataPath && line.trim().length > 0 && !line.includes('---')) {
                 // Try Vivado format first (with Incr and Path columns)
-                const vivadoMatch = line.match(/.*SLICE_X[0-9]+Y[0-9]+\.CLK.*\s+(.+)?\s+(-?\d+\.?\d+)\s+(.+)?$/);
+                //     SLICE_X45Y30.CLK     Tcinck                1.002   divfp_i0/sig000000a4
+                const vivadoMatch = line.match(/\s*([A-Z]+)_X([0-9]+)Y([0-9]+)\.CLK.*\s+(.+)?\s+(-?\d+\.?\d+)\s+(.+)?$/);
                 if (vivadoMatch) {
-                    const location = vivadoMatch[1];
-                    const cellType = vivadoMatch[2];
-                    const delayType = vivadoMatch[3];
-                    const incr = parseFloat(vivadoMatch[4]);
-                    const pathTime = parseFloat(vivadoMatch[5]);
-                    const resource = vivadoMatch[6] ? vivadoMatch[6].trim() : cellType;
+                  const type1 = vivadoMatch[1];
+                  const x = vivadoMatch[2];
+                  const y = vivadoMatch[3];
+                  const xy = `X${x}Y${y}`;
+                    const location = `${type1}_${xy}.${vivadoMatch[4]}`;
+                    const cellType = vivadoMatch[5];
+                    const delayType = vivadoMatch[6];
+                    const incr = parseFloat(vivadoMatch[7]);
+                    const pathTime = parseFloat(vivadoMatch[8]);
+                    const resource = vivadoMatch[9] ? vivadoMatch[9].trim() : cellType;
                     
                     // Determine element type
                     let type: 'logic' | 'net' | 'clock' = 'logic';
@@ -267,13 +272,15 @@ export class TwrParser {
                         delay: incr,
                         location,
                         delayType,
-                        resource: cellType
+                        resource: cellType,
+                        xy: xy
                     });
                     continue;
                 }
                 
                 // Try net line format: "                     net (fo=2, routed)           3.077  1053.529    ..."
                 //const netMatch = line.match(/^\s*net\s+\(([^)]+)\)\s+(-?\d+\.?\d+)\s+(-?\d+\.?\d+)\s+(.+)?$/);
+                // SLICE_X45Y27.G1      net (fanout=2)        2.917   fp32_cores_out_div_a<17>
                 const netMatch = line.match(/\s+(.+)?net \(fanout=([0-9]+)\)\s+(-?\d+\.?\d+)\s+(.+)?$/);
                 if (netMatch) {
                     const fo = parseFloat(netMatch[2]);
@@ -292,12 +299,18 @@ export class TwrParser {
                 }
                 
                 // Try ISE format
-                const iseMatch = line.match(/^\s*(\S+)\s+([\w\s()]+?)\s+(\d+\.?\d+)\s+(.+)?$/);
+                // normal line
+                //const iseMatch = line.match(/^\s*(\S+)\s+([\w\s()]+?)\s+(\d+\.?\d+)\s+(.+)?$/);
+                const iseMatch = line.match(/^\s*([A-Z]+)_X([0-9]+)Y([0-9]+)\.(\S+)\s+([\w\s()]+?)\s+(\d+\.?\d+)\s+(.+)?$/);
                 if (iseMatch) {
-                    const location = iseMatch[1];
-                    const delayType = iseMatch[2].trim();
-                    const delay = parseFloat(iseMatch[3]);
-                    const resource = iseMatch[4] ? iseMatch[4].trim() : '';
+                    const type1 = iseMatch[1];
+                    const x = iseMatch[2];
+                    const y = iseMatch[3];
+                    const xy = `X${x}Y${y}`;
+                    const location = `${iseMatch[0]}_${iseMatch[1]}${iseMatch[2]}${iseMatch[3]}.${iseMatch[4]}`;
+                    const delayType = iseMatch[5].trim();
+                    const delay = parseFloat(iseMatch[6]);
+                    const resource = iseMatch[7] ? iseMatch[7].trim() : '';
                     
                     let type: 'logic' | 'net' | 'clock' = 'logic';
                     if (delayType.toLowerCase().includes('net') || delayType.includes('fanout')) {
@@ -312,7 +325,8 @@ export class TwrParser {
                         delay,
                         location,
                         delayType,
-                        resource
+                        resource,
+                        xy: xy
                     });
                 }
             }

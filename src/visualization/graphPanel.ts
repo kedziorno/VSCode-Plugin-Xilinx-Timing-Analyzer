@@ -65,8 +65,8 @@ export class TimingGraphPanel {
 
     private generateDotGraph(paths: TimingPath[]): string {
         let dot = 'digraph TimingPaths {\n';
-        dot += '  rankdir=UD;\n';
-        dot += '  node [shape=box, style=rounded, fontsize=10];\n';
+        dot += '  rankdir=LR;\n';
+        dot += '  node [shape=record, colorscheme=paired12];\n';
         dot += '  edge [fontsize=9];\n';
         dot += '  graph [fontsize=10, compound=true];\n\n';
 
@@ -195,19 +195,71 @@ export class TimingGraphPanel {
                 prevNode = nodeId;
             }
             
-            dot += `  }\n\n`;
+            dot += `  };\n\n`;
         }
         
         // Add timing summary
         const logicDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'logic').reduce((sum, el) => sum + el.delay, 0) : 0;
         const netDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'net').reduce((sum, el) => sum + el.delay, 0) : 0;
-        
-        dot += `  // Summary: Logic=${logicDelay.toFixed(3)}ns, Net=${netDelay.toFixed(3)}ns, Total=${path.delay.toFixed(3)}ns\n`;
-        
-        dot += '}';
+
+        dot += `   Summary: Logic=${logicDelay.toFixed(3)}ns, Net=${netDelay.toFixed(3)}ns, Total=${path.delay.toFixed(3)}ns\n`;
+
+        // spartan3e 1200 - draw array box (slices) with lines between
+        let xb=92;
+        let yb=120;
+        let urc=`X${xb}Y${yb}`; // U-R
+        let ulc=`X${xb}Y0`; // U-L
+        let lrc=`X0Y${yb}`; // L-R
+        let llc=`X0Y0`; // start, L-L
+        dot += `struct0 [ label="\n`;
+        for (let y = yb-1; y >= 0; y--) {
+          dot += `{`;
+          for (let x = 0; x < xb; x++) {
+            dot += `<X${x}Y${y}>`; // box
+            if (x <= xb) {
+              dot += `|`;
+            }
+          }
+          dot += `}|\n`;
+        }
+        dot += `"];\n`;
+        let color_i = 0;
+        let colors=["red", "green", "blue", "brown", "darkorange", "gold4"];
+        if (path.pathElements && path.pathElements.length > 0) {
+          let prevNode = null;
+          for (let i = 0; i < path.pathElements.length; i=i+2) {
+            const element = path.pathElements[i];
+            let nodeId = element.xy;
+            const label = this.formatNodeLabel(element);
+            if (prevNode) {
+              //dot += `# ${label} ${element.xy}\n`; // debug
+              let im = i%colors.length;
+              dot += `struct0:${prevNode} -> struct0:${nodeId} [color="${colors[color_i]}"];\n`;
+              color_i++;
+              if (color_i == colors.length) {
+                color_i = 0;
+              }
+            }
+            prevNode = nodeId;
+          }
+        }
+        dot += `}`;
+        dot += `} }`;
+        dot += `}\n\n\n\n\n`;
+        const fs = require('fs');
+        fs.writeFile('logdot.txt', dot, function(err : any) {
+          if (err) {
+            return console.error(err);
+          }
+          console.log("File created!");
+        });
         return dot;
     }
-    
+
+    private Dx(num: any, dn: number = 2) {
+      return ("0".repeat(dn) + Math.floor(num)).slice(-dn);
+    }
+
     private formatNodeLabel(element: PathElement): string {
         const location = element.location || '';
         const delayType = element.delayType || element.type;
@@ -436,7 +488,7 @@ export class TimingGraphPanel {
         })();
     </script>
 </body>
-</html>`;
+</html>\n\n\n\n\n`;
         const fs = require('fs');
         fs.writeFile('svg_all.svg', svg_only, function(err : any) {
             if (err) {
