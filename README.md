@@ -1,6 +1,8 @@
 # Update - fast fixes (tested on VSCodium and Xilinx ISE 14.7):
 - SVG output to file (in VSCodium installation)
 - SVG Up-Down direction
+- Add slices and edges
+![slices](slices.png)
 ![log output](log.jpg)
 ![failing timing begin](outa.jpg)
 ![failing timing end](outb.jpg)
