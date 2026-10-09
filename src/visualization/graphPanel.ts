@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Graphviz } from '@hpcc-js/wasm';
 import { TimingPath, PathElement } from '../types/timing';
+import { array } from 'node:stream/iter';
 
 export class TimingGraphPanel {
     public static currentPanel: TimingGraphPanel | undefined;
@@ -65,10 +66,11 @@ export class TimingGraphPanel {
 
     private generateDotGraph(paths: TimingPath[]): string {
         let dot = 'digraph TimingPaths {\n';
+        dot += '  rank=same;\n';
         dot += '  rankdir=TB;\n';
         dot += '  node [shape=box, colorscheme=paired12];\n';
         dot += '  edge [fontsize=9];\n';
-        dot += '  graph [fontsize=10, compound=true];\n\n';
+        dot += '  graph [fontsize=10, compound=true];\n';
 
         // Should only have one path (the one at cursor)
         if (paths.length === 0) {
@@ -76,14 +78,21 @@ export class TimingGraphPanel {
             dot += '}';
             return dot;
         }
-        
+
         const path = paths[0];  // Only show the current path
         const color = path.failed ? 'red' : 'green';
         const fillColor = path.failed ? '#ffebee' : '#e8f5e9';
-        
+    
         dot += `  labelloc="t";\n`;
         dot += `  label="${path.failed ? '❌' : '✅'} Timing Path: ${path.source} → ${path.destination}\\nSlack: ${path.slack.toFixed(3)}ns | Delay: ${path.delay.toFixed(3)}ns";\n\n`;
-        
+
+        //// Add timing summary
+        //const logicDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'logic').reduce((sum, el) => sum + el.delay, 0) : 0;
+        //const netDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'net').reduce((sum, el) => sum + el.delay, 0) : 0;
+        //dot += `  label="Summary: Logic=${logicDelay.toFixed(3)}ns, Net=${netDelay.toFixed(3)}ns, Total=${path.delay.toFixed(3)}ns"\n`;
+
+        dot += `  subgraph cluster_graph {\n`;
+
         // 1. SOURCE CLOCK PATH
         if (path.sourceClockElements && path.sourceClockElements.length > 0) {
             dot += `  subgraph cluster_source_clock {\n`;
@@ -198,17 +207,17 @@ export class TimingGraphPanel {
             dot += `  };\n\n`;
         }
         
-        // Add timing summary
-        const logicDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'logic').reduce((sum, el) => sum + el.delay, 0) : 0;
-        const netDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'net').reduce((sum, el) => sum + el.delay, 0) : 0;
-
-        dot += `label="Summary: Logic=${logicDelay.toFixed(3)}ns, Net=${netDelay.toFixed(3)}ns, Total=${path.delay.toFixed(3)}ns"\n`;
-
         // spartan3e 1200 - draw array box (slices) with lines between
-        dot += `edge [arrowsize=0.1, penwidth=0.5, arrowhead="vee"];`;
-        dot += `nodesep = 1;`;
-        dot += `graph [ pad="0.5", nodesep="0.5", ranksep="2" ];`;
-        dot += `node  [ shape=plain ];`;
+        let xy_copy = []; // rm duplicates slices
+        for (let i = 0; i < path.pathElements.length; i = i + 2) {
+          xy_copy.push (path.pathElements[i].xy);
+        }
+        xy_copy = [...new Set(xy_copy)];
+        dot += `subgraph cluster_device_slices {\n`;
+        dot += `edge [arrowsize=0.1, penwidth=0.5, arrowhead="vee"];\n`;
+        dot += `nodesep = 1;\n`;
+        dot += `graph [ pad="0.5", nodesep="0.5", ranksep="2" ];\n`;
+        dot += `node  [ shape=plain ];\n`;
         let color_i = 0;
         let colors=["red", "green", "blue", "brown", "darkorange", "gold4"];
         let first, last;
@@ -220,18 +229,18 @@ export class TimingGraphPanel {
             if (i == 0) {
               first = nodeId;
               dot += `nodef [label="first"];\n`;
-              dot += `nodef -> struct0:${first};\n`;
+              dot += `nodef -> struct0:${first} [color="yellow"];\n`;
             }
             if (i == path.pathElements.length - 1) {
               last = nodeId;
               dot += `nodel [label="last"];\n`;
-              dot += `nodel -> struct0:${last};\n`;
+              dot += `nodel -> struct0:${last} [color="yellow"];\n`;
             }
             const label = this.formatNodeLabel(element);
             if (prevNode) {
               //dot += `# ${label} ${element.xy}\n`; // debug
               let im = i%colors.length;
-              dot += `struct0:${prevNode} -> struct0:${nodeId} [color="${colors[color_i]}", style="dashed"];\n`;
+              dot += `struct0:${prevNode}:e -> struct0:${nodeId}:w [color="${colors[color_i]}", style="dashed"];\n`;
               color_i++;
               if (color_i == colors.length) {
                 color_i = 0;
@@ -241,7 +250,7 @@ export class TimingGraphPanel {
           }
         }
         dot += `node0 [label="0,0"];\n`;
-        dot += `node0 -> struct0:X0Y0;\n`;
+        dot += `node0 -> struct0:X0Y0 [color="black"];\n`;
         let xb=92;
         let yb=120;
         let urc=`X${xb}Y${yb}`; // U-R
@@ -249,8 +258,9 @@ export class TimingGraphPanel {
         let lrc=`X0Y${yb}`; // L-R
         let llc=`X0Y0`; // start, L-L
         dot += `struct0 [ label=\n`;
-        dot += `<<TABLE  style="none" bgcolor="/rdylgn11/1:/rdylgn11/11"\
-        gradientangle="315" border="1" cellspacing="1" cellpadding="1">\n`;
+        dot += `<<TABLE style="none" \
+        bgcolor="/rdylgn11/1:/rdylgn11/11" gradientangle="315"\
+        border="0" cellborder="1" cellpadding="10">\n`;
         for (let y = yb-1; y >= 0; y--) {
           dot += `<TR>\n`;
           for (let x = 0; x < xb; x++) {
@@ -261,6 +271,8 @@ export class TimingGraphPanel {
               dot += `<TD BGCOLOR="yellow:blue" gradientangle="315" PORT="${xy}"></TD>\n`;
             } else if (y == 0 && x == 0) {
               dot += `<TD BGCOLOR="WHITE" PORT="${xy}"></TD>\n`;
+            } else if (xy_copy.indexOf (xy) != -1) {
+              dot += `<TD BGCOLOR="WHITE" PORT="${xy}"></TD>\n`;
             } else {
               dot += `<TD PORT="${xy}"></TD>\n`;
             }
@@ -268,9 +280,9 @@ export class TimingGraphPanel {
           dot += `</TR>\n`;
         }
         dot += `</TABLE>>];\n`;
-        dot += `}`;
-        dot += `} }`;
-        dot += `}\n\n\n\n\n`;
+        dot += `}\n`;
+        dot += `}\n`;
+        dot += `}\n\n`;
         const fs = require('fs');
         fs.writeFile('logdot.txt', dot, function(err : any) {
           if (err) {
