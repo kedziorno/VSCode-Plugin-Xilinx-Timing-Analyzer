@@ -94,7 +94,7 @@ export class TimingGraphPanel {
         dot += `  subgraph cluster_graph {\n`;
 
         // 1. SOURCE CLOCK PATH
-        if (path.sourceClockElements && path.sourceClockElements.length > 0) {
+        if (path.sourceClockElements && path.sourceClockElements.length == 0) {
             dot += `  subgraph cluster_source_clock {\n`;
             dot += `    label="Source Clock Path";\n`;
             dot += `    style=filled;\n`;
@@ -112,7 +112,7 @@ export class TimingGraphPanel {
                 const nodeColor = element.type === 'net' ? '#fff9c4' : '#bbdefb';
                 const shape = element.type === 'net' ? 'ellipse' : 'box';
                 
-                dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=blue];\n`;
+                //dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=blue];\n`;
                 
                 if (prevNode) {
                     dot += `    ${prevNode} -> ${nodeId} [color=blue, label="${element.delay.toFixed(3)}ns"];\n`;
@@ -124,7 +124,7 @@ export class TimingGraphPanel {
         }
         
         // 2. DATA PATH (combinational logic)
-        if (path.pathElements && path.pathElements.length > 0) {
+        if (path.pathElements && path.pathElements.length == 0) {
             dot += `  subgraph cluster_data_path {\n`;
             dot += `    label="Data Path (Logic + Routing)";\n`;
             dot += `    style=filled;\n`;
@@ -153,7 +153,7 @@ export class TimingGraphPanel {
                     nodeColor = '#e1f5fe';
                 }
                 
-                dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=${color}];\n`;
+                //dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=${color}];\n`;
                 
                 if (prevNode) {
                     const edgeStyle = element.type === 'net' ? 'dashed' : 'solid';
@@ -170,7 +170,7 @@ export class TimingGraphPanel {
         }
         
         // 3. DESTINATION CLOCK PATH
-        if (path.destClockElements && path.destClockElements.length > 0) {
+        if (path.destClockElements && path.destClockElements.length == 0) {
             dot += `  subgraph cluster_dest_clock {\n`;
             dot += `    label="Destination Clock Path";\n`;
             dot += `    style=filled;\n`;
@@ -192,7 +192,7 @@ export class TimingGraphPanel {
                 const nodeColor = element.type === 'net' ? '#fff9c4' : '#e1bee7';
                 const shape = element.type === 'net' ? 'ellipse' : 'box';
                 
-                dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=purple];\n`;
+                //dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=purple];\n`;
                 
                 if (prevNode) {
                     dot += `    ${prevNode} -> ${nodeId} [color=purple, label="${element.delay.toFixed(3)}ns"];\n`;
@@ -240,7 +240,7 @@ export class TimingGraphPanel {
             if (prevNode) {
               //dot += `# ${label} ${element.xy}\n`; // debug
               let im = i%colors.length;
-              dot += `struct0:${prevNode}:e -> struct0:${nodeId}:w [color="${colors[color_i]}", style="dashed"];\n`;
+              dot += `${prevNode} -> ${nodeId}:w [color="${colors[color_i]}", style="dashed"];\n`;
               color_i++;
               if (color_i == colors.length) {
                 color_i = 0;
@@ -251,35 +251,39 @@ export class TimingGraphPanel {
         }
         dot += `node0 [label="0,0"];\n`;
         dot += `node0 -> struct0:X0Y0 [color="black"];\n`;
-        let xb=92;
-        let yb=120;
+        let xb=10; //92;
+        let yb=17; //120;
         let urc=`X${xb}Y${yb}`; // U-R
         let ulc=`X${xb}Y0`; // U-L
         let lrc=`X0Y${yb}`; // L-R
         let llc=`X0Y0`; // start, L-L
-        dot += `struct0 [ label=\n`;
-        dot += `<<TABLE style="none" \
-        bgcolor="/rdylgn11/1:/rdylgn11/11" gradientangle="315"\
-        border="0" cellborder="1" cellpadding="10">\n`;
+        let x_s = "";
         for (let y = yb-1; y >= 0; y--) {
-          dot += `<TR>\n`;
+          let x_string: any[] = [];
           for (let x = 0; x < xb; x++) {
             let xy = `X${x}Y${y}`;
-            if (xy == first) {
-              dot += `<TD BGCOLOR="GOLD" PORT="${xy}"></TD>\n`;
-            } else if (xy == last) {
-              dot += `<TD BGCOLOR="yellow:blue" gradientangle="315" PORT="${xy}"></TD>\n`;
-            } else if (y == 0 && x == 0) {
-              dot += `<TD BGCOLOR="WHITE" PORT="${xy}"></TD>\n`;
-            } else if (xy_copy.indexOf (xy) != -1) {
-              dot += `<TD BGCOLOR="WHITE" PORT="${xy}"></TD>\n`;
-            } else {
-              dot += `<TD PORT="${xy}"></TD>\n`;
-            }
+            let yx = `Y${y}X${x}`;
+            dot += `node [group=g${y}] ${yx} [label="${yx}"];\n`;
+            x_string.push (`${yx}`);
           }
-          dot += `</TR>\n`;
+          const x_s_tmp = x_string.join (" -> ");
+          x_s += `${x_s_tmp};\n`;
         }
-        dot += `</TABLE>>];\n`;
+        dot += `${x_s}\n`;
+        console.log (x_s);
+        let x_r = "";
+        for (let x = 0; x < xb; x++) {
+          let x_rank: any[] = [];
+          for (let y = yb-1; y >= 0; y--) {
+            //let xy = `X${x}Y${y}`;
+            let yx = `Y${y}X${x}`;
+            x_rank.push (`${yx}`);
+          }
+          const x_r_tmp = x_rank.join (" -> ");
+          x_r += `{ rank = same ${x_r_tmp} };\n`;
+        }
+        dot += `${x_r}\n`;
+        console.log (x_r);
         dot += `}\n`;
         dot += `}\n`;
         dot += `}\n\n`;
