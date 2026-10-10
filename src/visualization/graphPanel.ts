@@ -72,6 +72,7 @@ export class TimingGraphPanel {
         dot += '  node [shape=box, colorscheme=paired12];\n';
         //dot += '  node [shape=plaintext, colorscheme=paired12];\n';
         dot += '  edge [style=invis,fontsize=9];\n';
+        dot += '  splines=line;\n';
         dot += '  graph [layout=dot,fontsize=10, compound=true];\n';
 
         // Should only have one path (the one at cursor)
@@ -220,6 +221,7 @@ export class TimingGraphPanel {
         //dot += `nodesep = 0;\n`;
         //dot += `ranksep = 0;\n`;
         //dot += `graph [ pad="0.5", nodesep="0.5", ranksep="2" ];\n`;
+        let edges_tmp = String ();
         let color_i = 0;
         let colors=["red", "green", "blue", "brown", "darkorange", "gold4"];
         let first, last;
@@ -242,7 +244,7 @@ export class TimingGraphPanel {
             if (prevNode) {
               //dot += `# ${label} ${element.xy}\n`; // debug
               let im = i%colors.length;
-              //dot += `${prevNode} -> ${nodeId} [style = vis, color="${colors[color_i]}"];\n`;
+              edges_tmp += `${prevNode} -> ${nodeId} [style = vis, color="${colors[color_i]}"];\n`;
               color_i++;
               if (color_i == colors.length) {
                 color_i = 0;
@@ -263,17 +265,24 @@ export class TimingGraphPanel {
         let x_s = "";
         for (let y = yb - 1; y >= 0; y--) {
           let x_string: any[] = [];
+          dot += `subgraph cluster_node_${y} {\n`;
           for (let x = 0; x < xb; x++) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
             dot += `node [group=g${y}] ${xy} [label="${xy}"];\n`;
             x_string.push (`${xy}`);
           }
+          dot += `}\n`;
           const x_s_tmp = x_string.join (" -> ");
+          x_s += `subgraph cluster_${y} {\n`;
           x_s += `${x_s_tmp};\n`;
+          x_s += `}\n`;
         }
+        //dot += `subgraph cluster_main_2 {\n`;
         dot += `${x_s}\n`;
+        //dot += `}\n`;
         console.log (x_s);
+        dot += `subgraph cluster_main_1 {\n`;
         let x_r = "";
         for (let x = xb - 1; x >= 0; x--) {
           let x_rank: any[] = [];
@@ -282,11 +291,15 @@ export class TimingGraphPanel {
             let yx = `Y${y}X${x}`;
             x_rank.push (`${xy}`);
           }
-          const x_r_tmp = x_rank.join (" -> ");
+          const x_r_tmp = x_rank.join (" ");
+          //x_r += `subgraph cluster_${x} { rank = same ${x_r_tmp} };\n`;
           x_r += `{ rank = same ${x_r_tmp} };\n`;
         }
         dot += `${x_r}\n`;
+        dot += `}\n`;
         console.log (x_r);
+        dot += `edge[style=solid, penwidth=10, constraint=false];\n`;
+        dot += edges_tmp; 
         dot += `}\n`;
         dot += `}\n`;
         dot += `}\n\n`;
