@@ -32,6 +32,7 @@ export class TwrParser {
         let inDataPath = false;
         let inSourceClockPath = false;
         let inDestClockPath = false;
+        let last_node : PathElement;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -301,7 +302,10 @@ export class TwrParser {
                 // Try ISE format
                 // normal line
                 //const iseMatch = line.match(/^\s*(\S+)\s+([\w\s()]+?)\s+(\d+\.?\d+)\s+(.+)?$/);
-                const iseMatch = line.match(/^\s*([A-Z]+)_X([0-9]+)Y([0-9]+)\.(\S+)\s+([\w\s()]+?)\s+(\d+\.?\d+)\s+(.+)?$/);
+                //if (paths[0].pathElements.length > 0) { // XXX describe
+                //    last_node = paths[0].pathElements[paths[0].pathElements.length-1];
+                //}
+                const iseMatch = line.match(/^\s*([SLICE|MULT18X18]+)_X([0-9]+)Y([0-9]+)\.(\S+)\s+([\w\s()]+?)\s+(\d+\.?\d+)\s+(.+)?$/);
                 if (iseMatch) {
                     const type1 = iseMatch[1];
                     const x = iseMatch[2];
@@ -311,7 +315,21 @@ export class TwrParser {
                     const delayType = iseMatch[5].trim();
                     const delay = parseFloat(iseMatch[6]);
                     const resource = iseMatch[7] ? iseMatch[7].trim() : '';
-                    
+                    if (type1 == "MULT18X18") {
+                        vscode.window.showInformationMessage('MULT18X18 not implemented, use null node');
+                        console.log ("MULT18X18 not implemented, use null node");
+                        currentPath.pathElements?.push ({
+                            type: 'undefined',
+                            name: 'undefined',
+                            delay: 0,
+                            location: 'undefined',
+                            delayType: 'undefined',
+                            resource: 'undefined',
+                            xy: `X0Y0`,
+                            //xy: paths[0].pathElements[paths[0].pathElements.length-1].xy
+                        } as PathElement);
+                        continue;
+                    }
                     let type: 'logic' | 'net' | 'clock' = 'logic';
                     if (delayType.toLowerCase().includes('net') || delayType.includes('fanout')) {
                         type = 'net';

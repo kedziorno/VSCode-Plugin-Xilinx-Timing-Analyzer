@@ -15,7 +15,7 @@ export interface TimingPath {
 }
 
 export interface PathElement {
-    type: 'logic' | 'net' | 'clock';
+    type: 'logic' | 'net' | 'clock' | 'undefined';
     name: string;
     delay: number;
     location?: string;

@@ -266,11 +266,11 @@ export class TimingGraphPanel {
         let lrc=`X0Y${yb}`; // L-R
         let llc=`X0Y0`; // start, L-L
         let x_s = "";
-        for (let y = yb - 1; y >= 0; y--) {
+        for (let y = 0; y < yb; y++) {
           let x_string: any[] = [];
           dot += '  peripheries=0;\n';
           dot += `subgraph cluster_node_${y} {\n`;
-          for (let x = 0; x < xb; x++) {
+          for (let x = xb - 1; x >= 0; x--) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
             if ((x == 0 && y == 0) || xy == first || xy == last) {
