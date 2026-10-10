@@ -68,8 +68,11 @@ export class TimingGraphPanel {
         let dot = 'digraph TimingPaths {\n';
         dot += '  rank=same;\n';
         dot += '  rankdir=RL;\n';
+        dot += '  nodesep=0.0;\n';
+        dot += '  ranksep="0.1 equally";\n';
+        dot += 'size="6,8"; ratio=fill;\n';
         //dot += `rankdir = LR;\n`;
-        dot += '  node [shape=box, colorscheme=paired12];\n';
+        dot += '  node [shape=box, colorscheme=paired12, width=0.9, height=0.9, fixedsize=true];\n';
         //dot += '  node [shape=plaintext, colorscheme=paired12];\n';
         dot += '  edge [style=invis,fontsize=9];\n';
         dot += '  splines=line;\n';
@@ -86,8 +89,8 @@ export class TimingGraphPanel {
         const color = path.failed ? 'red' : 'green';
         const fillColor = path.failed ? '#ffebee' : '#e8f5e9';
     
-        dot += `  labelloc="t";\n`;
-        dot += `  label="${path.failed ? '❌' : '✅'} Timing Path: ${path.source} → ${path.destination}\\nSlack: ${path.slack.toFixed(3)}ns | Delay: ${path.delay.toFixed(3)}ns";\n\n`;
+        //dot += `  labelloc="t";\n`;
+        //dot += `  label="${path.failed ? '❌' : '✅'} Timing Path: ${path.source} → ${path.destination}\\nSlack: ${path.slack.toFixed(3)}ns | Delay: ${path.delay.toFixed(3)}ns";\n\n`;
 
         //// Add timing summary
         //const logicDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'logic').reduce((sum, el) => sum + el.delay, 0) : 0;
@@ -211,11 +214,12 @@ export class TimingGraphPanel {
         }
         
         // spartan3e 1200 - draw array box (slices) with lines between
-        let xy_copy = []; // rm duplicates slices
+        let xy_copy = [];
         for (let i = 0; i < path.pathElements.length; i = i + 2) {
           xy_copy.push (path.pathElements[i].xy);
         }
-        xy_copy = [...new Set(xy_copy)];
+        xy_copy = [...new Set(xy_copy)]; // rm duplicates slices, without this we have space for edge to the same slice (if some exists)
+        console.log (xy_copy.join (","));
         dot += `subgraph cluster_device_slices {\n`;
         //dot += `edge [style = invis, arrowsize=0.1, penwidth=0.5, arrowhead="vee"];\n`;
         //dot += `nodesep = 0;\n`;
@@ -227,20 +231,19 @@ export class TimingGraphPanel {
         let first, last;
         if (path.pathElements && path.pathElements.length > 0) {
           let prevNode = null;
-          for (let i = 0; i < path.pathElements.length; i=i+2) {
-            const element = path.pathElements[i];
-            let nodeId = element.xy;
+          for (let i = 0; i < xy_copy.length; i++) {
+            const nodeId = xy_copy[i];
             if (i == 0) {
               first = nodeId;
               //dot += `nodef [label="first"];\n`;
               //dot += `nodef -> struct0:${first} [color="yellow"];\n`;
             }
-            if (i == path.pathElements.length - 1) {
+            if (i == xy_copy.length - 1) {
               last = nodeId;
               //dot += `nodel [label="last"];\n`;
               //dot += `nodel -> struct0:${last} [color="yellow"];\n`;
             }
-            const label = this.formatNodeLabel(element);
+            //const label = this.formatNodeLabel(element);
             if (prevNode) {
               //dot += `# ${label} ${element.xy}\n`; // debug
               let im = i%colors.length;
@@ -265,11 +268,16 @@ export class TimingGraphPanel {
         let x_s = "";
         for (let y = yb - 1; y >= 0; y--) {
           let x_string: any[] = [];
+          dot += '  peripheries=0;\n';
           dot += `subgraph cluster_node_${y} {\n`;
           for (let x = 0; x < xb; x++) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
-            dot += `node [group=g${y}] ${xy} [label="${xy}"];\n`;
+            if ((x == 0 && y == 0) || xy == first || xy == last) {
+              dot += `node [group=g${y}] ${xy} [style=filled, fillcolor=black, label=""];\n`;
+            } else {
+              dot += `node [group=g${y}] ${xy} [label=""];\n`;
+            }
             x_string.push (`${xy}`);
           }
           dot += `}\n`;
@@ -281,7 +289,7 @@ export class TimingGraphPanel {
         //dot += `subgraph cluster_main_2 {\n`;
         dot += `${x_s}\n`;
         //dot += `}\n`;
-        console.log (x_s);
+        //console.log (x_s);
         dot += `subgraph cluster_main_1 {\n`;
         let x_r = "";
         for (let x = xb - 1; x >= 0; x--) {
@@ -297,9 +305,10 @@ export class TimingGraphPanel {
         }
         dot += `${x_r}\n`;
         dot += `}\n`;
-        console.log (x_r);
-        dot += `edge[style=solid, penwidth=10, constraint=false];\n`;
+        //console.log (x_r);
+        dot += `edge[style=solid, penwidth=5, constraint=false];\n`;
         dot += edges_tmp; 
+        console.log (edges_tmp);
         dot += `}\n`;
         dot += `}\n`;
         dot += `}\n\n`;
