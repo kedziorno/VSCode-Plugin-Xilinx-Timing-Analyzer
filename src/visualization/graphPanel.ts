@@ -67,10 +67,12 @@ export class TimingGraphPanel {
     private generateDotGraph(paths: TimingPath[]): string {
         let dot = 'digraph TimingPaths {\n';
         dot += '  rank=same;\n';
-        dot += '  rankdir=TB;\n';
+        dot += '  rankdir=RL;\n';
+        //dot += `rankdir = LR;\n`;
         dot += '  node [shape=box, colorscheme=paired12];\n';
-        dot += '  edge [fontsize=9];\n';
-        dot += '  graph [fontsize=10, compound=true];\n';
+        //dot += '  node [shape=plaintext, colorscheme=paired12];\n';
+        dot += '  edge [style=invis,fontsize=9];\n';
+        dot += '  graph [layout=dot,fontsize=10, compound=true];\n';
 
         // Should only have one path (the one at cursor)
         if (paths.length === 0) {
@@ -214,10 +216,10 @@ export class TimingGraphPanel {
         }
         xy_copy = [...new Set(xy_copy)];
         dot += `subgraph cluster_device_slices {\n`;
-        dot += `edge [arrowsize=0.1, penwidth=0.5, arrowhead="vee"];\n`;
-        dot += `nodesep = 1;\n`;
-        dot += `graph [ pad="0.5", nodesep="0.5", ranksep="2" ];\n`;
-        dot += `node  [ shape=plain ];\n`;
+        //dot += `edge [style = invis, arrowsize=0.1, penwidth=0.5, arrowhead="vee"];\n`;
+        //dot += `nodesep = 0;\n`;
+        //dot += `ranksep = 0;\n`;
+        //dot += `graph [ pad="0.5", nodesep="0.5", ranksep="2" ];\n`;
         let color_i = 0;
         let colors=["red", "green", "blue", "brown", "darkorange", "gold4"];
         let first, last;
@@ -228,19 +230,19 @@ export class TimingGraphPanel {
             let nodeId = element.xy;
             if (i == 0) {
               first = nodeId;
-              dot += `nodef [label="first"];\n`;
-              dot += `nodef -> struct0:${first} [color="yellow"];\n`;
+              //dot += `nodef [label="first"];\n`;
+              //dot += `nodef -> struct0:${first} [color="yellow"];\n`;
             }
             if (i == path.pathElements.length - 1) {
               last = nodeId;
-              dot += `nodel [label="last"];\n`;
-              dot += `nodel -> struct0:${last} [color="yellow"];\n`;
+              //dot += `nodel [label="last"];\n`;
+              //dot += `nodel -> struct0:${last} [color="yellow"];\n`;
             }
             const label = this.formatNodeLabel(element);
             if (prevNode) {
               //dot += `# ${label} ${element.xy}\n`; // debug
               let im = i%colors.length;
-              dot += `${prevNode} -> ${nodeId}:w [color="${colors[color_i]}", style="dashed"];\n`;
+              //dot += `${prevNode} -> ${nodeId} [style = vis, color="${colors[color_i]}"];\n`;
               color_i++;
               if (color_i == colors.length) {
                 color_i = 0;
@@ -249,22 +251,23 @@ export class TimingGraphPanel {
             prevNode = nodeId;
           }
         }
-        dot += `node0 [label="0,0"];\n`;
-        dot += `node0 -> struct0:X0Y0 [color="black"];\n`;
-        let xb=10; //92;
-        let yb=17; //120;
+        //dot += `node0 [label="0,0"];\n`;
+        //dot += `node0 -> struct0:X0Y0 [color="black"];\n`;
+        //dot += `!!!!!!!!!DEBUG!!!!!!!!!!!!`;
+        let xb=92;
+        let yb=120;
         let urc=`X${xb}Y${yb}`; // U-R
         let ulc=`X${xb}Y0`; // U-L
         let lrc=`X0Y${yb}`; // L-R
         let llc=`X0Y0`; // start, L-L
         let x_s = "";
-        for (let y = yb-1; y >= 0; y--) {
+        for (let y = yb - 1; y >= 0; y--) {
           let x_string: any[] = [];
           for (let x = 0; x < xb; x++) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
-            dot += `node [group=g${y}] ${yx} [label="${yx}"];\n`;
-            x_string.push (`${yx}`);
+            dot += `node [group=g${y}] ${xy} [label="${xy}"];\n`;
+            x_string.push (`${xy}`);
           }
           const x_s_tmp = x_string.join (" -> ");
           x_s += `${x_s_tmp};\n`;
@@ -272,12 +275,12 @@ export class TimingGraphPanel {
         dot += `${x_s}\n`;
         console.log (x_s);
         let x_r = "";
-        for (let x = 0; x < xb; x++) {
+        for (let x = xb - 1; x >= 0; x--) {
           let x_rank: any[] = [];
-          for (let y = yb-1; y >= 0; y--) {
-            //let xy = `X${x}Y${y}`;
+          for (let y = 0; y < yb; y++) {
+            let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
-            x_rank.push (`${yx}`);
+            x_rank.push (`${xy}`);
           }
           const x_r_tmp = x_rank.join (" -> ");
           x_r += `{ rank = same ${x_r_tmp} };\n`;
