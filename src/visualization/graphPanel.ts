@@ -65,18 +65,23 @@ export class TimingGraphPanel {
     }
 
     private generateDotGraph(paths: TimingPath[]): string {
+        let tmp_dp = "";
         let dot = 'digraph TimingPaths {\n';
-        dot += '  rank=same;\n';
-        dot += '  rankdir=RL;\n';
+        //dot += '  rank=same;\n';
+        //dot += '  rankdir=RL;\n';
+        dot += '  peripheries=2;\n';
+        dot += '  concentrate=true;\n';
+        dot += '  justify=true;\n';
+        dot += '  dpi=96;\n';
         dot += '  nodesep=0.0;\n';
         dot += '  ranksep="0.1 equally";\n';
-        dot += 'size="6,8"; ratio=fill;\n';
-        //dot += `rankdir = LR;\n`;
+        //dot += 'graph [layout=dot, page="8.5,11", ratio=fill, center=1];\n';
+        dot += 'graph [layout=dot, size="8.5,11", ratio=fill, center=1];\n';
+        //dot += 'graph [layout=dot, compound=true, page="8.5,11", ratio=fill, center=1];\n';
         dot += '  node [shape=box, colorscheme=paired12, width=0.9, height=0.9, fixedsize=true];\n';
         //dot += '  node [shape=plaintext, colorscheme=paired12];\n';
         dot += '  edge [style=invis,fontsize=9];\n';
         dot += '  splines=line;\n';
-        dot += '  graph [layout=dot,fontsize=10, compound=true];\n';
 
         // Should only have one path (the one at cursor)
         if (paths.length === 0) {
@@ -89,25 +94,23 @@ export class TimingGraphPanel {
         const color = path.failed ? 'red' : 'green';
         const fillColor = path.failed ? '#ffebee' : '#e8f5e9';
     
-        //dot += `  labelloc="t";\n`;
-        //dot += `  label="${path.failed ? '❌' : '✅'} Timing Path: ${path.source} → ${path.destination}\\nSlack: ${path.slack.toFixed(3)}ns | Delay: ${path.delay.toFixed(3)}ns";\n\n`;
+        tmp_dp += `subgraph cluster_label {\n`;
 
         //// Add timing summary
         //const logicDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'logic').reduce((sum, el) => sum + el.delay, 0) : 0;
         //const netDelay = path.pathElements ? path.pathElements.filter(el => el.type === 'net').reduce((sum, el) => sum + el.delay, 0) : 0;
         //dot += `  label="Summary: Logic=${logicDelay.toFixed(3)}ns, Net=${netDelay.toFixed(3)}ns, Total=${path.delay.toFixed(3)}ns"\n`;
 
-        dot += `  subgraph cluster_graph {\n`;
+        tmp_dp += `  subgraph cluster_graph { rankdir=TB;fontsize=24;\n`;
 
         // 1. SOURCE CLOCK PATH
-        if (path.sourceClockElements && path.sourceClockElements.length == 0) {
-            dot += `  subgraph cluster_source_clock {\n`;
-            dot += `    label="Source Clock Path";\n`;
-            dot += `    style=filled;\n`;
-            dot += `    fillcolor="#e3f2fd";\n`;
-            dot += `    color=blue;\n`;
-            dot += `    fontcolor=blue;\n`;
-            dot += `    fontsize=12;\n\n`;
+        if (path.sourceClockElements && path.sourceClockElements.length > 0) {
+            tmp_dp += `  subgraph cluster_source_clock {\n`;
+            tmp_dp += `    label="Source Clock Path";\n`;
+            tmp_dp += `    style=filled;\n`;
+            tmp_dp += `    fillcolor="#e3f2fd";\n`;
+            tmp_dp += `    color=blue;\n`;
+            tmp_dp += `    fontcolor=blue;\n`;
             
             let prevNode = null;
             for (let i = 0; i < path.sourceClockElements.length; i++) {
@@ -116,28 +119,27 @@ export class TimingGraphPanel {
                 
                 const label = this.formatNodeLabel(element);
                 const nodeColor = element.type === 'net' ? '#fff9c4' : '#bbdefb';
-                const shape = element.type === 'net' ? 'ellipse' : 'box';
+                const shape = element.type === 'net' ? 'circle' : 'box';
                 
-                //dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=blue];\n`;
+                tmp_dp += `    ${nodeId} [margin="0,0", width=0, height=0, label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=blue];\n`;
                 
                 if (prevNode) {
-                    dot += `    ${prevNode} -> ${nodeId} [color=blue, label="${element.delay.toFixed(3)}ns"];\n`;
+                    tmp_dp += `    ${prevNode} -> ${nodeId} [color=blue, label="${element.delay.toFixed(3)}ns"];\n`;
                 }
                 prevNode = nodeId;
             }
             
-            dot += `  }\n\n`;
+            tmp_dp += `  }\n\n`;
         }
         
         // 2. DATA PATH (combinational logic)
-        if (path.pathElements && path.pathElements.length == 0) {
-            dot += `  subgraph cluster_data_path {\n`;
-            dot += `    label="Data Path (Logic + Routing)";\n`;
-            dot += `    style=filled;\n`;
-            dot += `    fillcolor="${fillColor}";\n`;
-            dot += `    color=${color};\n`;
-            dot += `    fontcolor=${color};\n`;
-            dot += `    fontsize=12;\n\n`;
+        if (path.pathElements && path.pathElements.length > 0) {
+            tmp_dp += `  subgraph cluster_data_path {\n`;
+            tmp_dp += `    label="Data Path (Logic + Routing)";\n`;
+            tmp_dp += `    style=filled;\n`;
+            tmp_dp += `    fillcolor="${fillColor}";\n`;
+            tmp_dp += `    color=${color};\n`;
+            tmp_dp += `    fontcolor=${color};\n`;
             
             let prevNode = null;
             const sourceClockLastNode = path.sourceClockElements && path.sourceClockElements.length > 0 
@@ -153,37 +155,36 @@ export class TimingGraphPanel {
                 let shape = 'box';
                 
                 if (element.type === 'net') {
-                    shape = 'ellipse';
+                    shape = 'circle';
                     nodeColor = '#fff9c4';
                 } else if (element.type === 'clock') {
                     nodeColor = '#e1f5fe';
                 }
                 
-                //dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=${color}];\n`;
+                tmp_dp += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=${color}];\n`;
                 
                 if (prevNode) {
                     const edgeStyle = element.type === 'net' ? 'dashed' : 'solid';
-                    dot += `    ${prevNode} -> ${nodeId} [color=${color}, style=${edgeStyle}, label="${element.delay.toFixed(3)}ns"];\n`;
+                    tmp_dp += `    ${prevNode} -> ${nodeId} [color=${color}, style=${edgeStyle}, label="${element.delay.toFixed(3)}ns"];\n`;
                 } else if (sourceClockLastNode) {
                     // Connect from source clock path to data path
-                    dot += `  ${sourceClockLastNode} -> ${nodeId} [color=${color}, style=bold, label="Launch", ltail=cluster_source_clock];\n`;
+                    tmp_dp += `  ${sourceClockLastNode} -> ${nodeId} [color=${color}, style=bold, label="Launch", ltail=cluster_source_clock];\n`;
                 }
                 
                 prevNode = nodeId;
             }
             
-            dot += `  }\n\n`;
+            tmp_dp += `  }\n\n`;
         }
         
         // 3. DESTINATION CLOCK PATH
-        if (path.destClockElements && path.destClockElements.length == 0) {
-            dot += `  subgraph cluster_dest_clock {\n`;
-            dot += `    label="Destination Clock Path";\n`;
-            dot += `    style=filled;\n`;
-            dot += `    fillcolor="#f3e5f5";\n`;
-            dot += `    color=purple;\n`;
-            dot += `    fontcolor=purple;\n`;
-            dot += `    fontsize=12;\n\n`;
+        if (path.destClockElements && path.destClockElements.length > 0) {
+            tmp_dp += `  subgraph cluster_dest_clock {\n`;
+            tmp_dp += `    label="Destination Clock Path";\n`;
+            tmp_dp += `    style=filled;\n`;
+            tmp_dp += `    fillcolor="#f3e5f5";\n`;
+            tmp_dp += `    color=purple;\n`;
+            tmp_dp += `    fontcolor=purple;\n`;
             
             let prevNode = null;
             const dataPathLastNode = path.pathElements && path.pathElements.length > 0 
@@ -198,29 +199,33 @@ export class TimingGraphPanel {
                 const nodeColor = element.type === 'net' ? '#fff9c4' : '#e1bee7';
                 const shape = element.type === 'net' ? 'ellipse' : 'box';
                 
-                //dot += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=purple];\n`;
+                tmp_dp += `    ${nodeId} [label="${label}", shape=${shape}, style=filled, fillcolor="${nodeColor}", color=purple];\n`;
                 
                 if (prevNode) {
-                    dot += `    ${prevNode} -> ${nodeId} [color=purple, label="${element.delay.toFixed(3)}ns"];\n`;
+                    tmp_dp += `    ${prevNode} -> ${nodeId} [color=purple, label="${element.delay.toFixed(3)}ns"];\n`;
                 } else if (dataPathLastNode) {
                     // Connect from data path to destination clock path
-                    dot += `  ${dataPathLastNode} -> ${nodeId} [color=purple, style=bold, label="Capture", lhead=cluster_dest_clock];\n`;
+                    tmp_dp += `  ${dataPathLastNode} -> ${nodeId} [color=purple, style=bold, label="Capture", lhead=cluster_dest_clock];\n`;
                 }
                 
                 prevNode = nodeId;
             }
             
-            dot += `  };\n\n`;
+            tmp_dp += `  };\n\n`;
         }
         
+        tmp_dp += `}\n`;
+
         // spartan3e 1200 - draw array box (slices) with lines between
         let xy_copy = [];
-        for (let i = 0; i < path.pathElements.length; i = i + 2) {
-          xy_copy.push (path.pathElements[i].xy);
+        let i : number;
+        for (i = 0; i < path.pathElements.length; i = i + 2) {
+          xy_copy.push (paths[0].pathElements[i].xy);
         }
         xy_copy = [...new Set(xy_copy)]; // rm duplicates slices, without this we have space for edge to the same slice (if some exists)
-        console.log (xy_copy.join (","));
-        dot += `subgraph cluster_device_slices {\n`;
+        console.log ("xy_copy "+xy_copy);
+        //console.log (xy_copy.join (","));
+        dot += `subgraph cluster_left {\nsubgraph cluster_device_slices {\n`;
         //dot += `edge [style = invis, arrowsize=0.1, penwidth=0.5, arrowhead="vee"];\n`;
         //dot += `nodesep = 0;\n`;
         //dot += `ranksep = 0;\n`;
@@ -266,17 +271,21 @@ export class TimingGraphPanel {
         let lrc=`X0Y${yb}`; // L-R
         let llc=`X0Y0`; // start, L-L
         let x_s = "";
+        dot += '  peripheries=0;\n';
         for (let y = 0; y < yb; y++) {
           let x_string: any[] = [];
-          dot += '  peripheries=0;\n';
           dot += `subgraph cluster_node_${y} {\n`;
           for (let x = xb - 1; x >= 0; x--) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
+            //margin=0, width=0, height=0, // points
+            let vis = xy_copy.join(",").includes (xy.toUpperCase()+",");
             if ((x == 0 && y == 0) || xy == first || xy == last) {
               dot += `node [group=g${y}] ${xy} [style=filled, fillcolor=black, label=""];\n`;
+            } else if (vis) {
+              dot += `node [group=g${y}] ${xy} [label="", style=vis];\n`;
             } else {
-              dot += `node [group=g${y}] ${xy} [label=""];\n`;
+              dot += `node [group=g${y}] ${xy} [label="", style=vis];\n`; // invis
             }
             x_string.push (`${xy}`);
           }
@@ -305,12 +314,16 @@ export class TimingGraphPanel {
         }
         dot += `${x_r}\n`;
         dot += `}\n`;
+        dot += `}\n`;
         //console.log (x_r);
-        dot += `edge[style=solid, penwidth=5, constraint=false];\n`;
+        dot += `edge[style=solid, penwidth=10, constraint=false];\n`;
         dot += edges_tmp; 
         console.log (edges_tmp);
         dot += `}\n`;
+        dot += tmp_dp;
         dot += `}\n`;
+        dot += `labelloc="t";\n`;
+        dot += `label="${path.failed ? '❌' : '✅'} Timing Path: ${path.source} → ${path.destination}\\nSlack: ${path.slack.toFixed(3)}ns | Delay: ${path.delay.toFixed(3)}ns";\n`;
         dot += `}\n\n`;
         const fs = require('fs');
         fs.writeFile('logdot.txt', dot, function(err : any) {
