@@ -1,11 +1,7 @@
-# Update - fast fixes (tested on VSCodium and Xilinx ISE 14.7):
-- SVG output to file (in VSCodium installation)
-- SVG Up-Down direction
-- Add slices and edges
+# Update - fast fixes (tested on VSCodium and Xilinx ISE 14.7 - xc3s1200e-fg320-4):
+- Add slices (92x120) and edges - svg output ~ 1-2sec
 ![slices](slices.png)
 ![log output](log.jpg)
-![failing timing begin](outa.jpg)
-![failing timing end](outb.jpg)
 
 # Xilinx Timing Report Analyzer
 

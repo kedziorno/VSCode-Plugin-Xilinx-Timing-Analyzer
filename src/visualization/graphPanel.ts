@@ -65,24 +65,26 @@ export class TimingGraphPanel {
     }
 
     private generateDotGraph(paths: TimingPath[]): string {
-        let tmp_dp = "";
         let dot = 'digraph TimingPaths {\n';
-        //dot += '  rank=same;\n';
-        //dot += '  rankdir=RL;\n';
-        dot += '  peripheries=2;\n';
-        dot += '  concentrate=true;\n';
-        dot += '  justify=true;\n';
-        dot += '  dpi=96;\n';
+        dot += '  rank=same;\n';
+        dot += '  rankdir=BT;\n';
         dot += '  nodesep=0.0;\n';
-        dot += '  ranksep="0.1 equally";\n';
-        //dot += 'graph [layout=dot, page="8.5,11", ratio=fill, center=1];\n';
-        dot += 'graph [layout=dot, size="8.5,11", ratio=fill, center=1];\n';
-        //dot += 'graph [layout=dot, compound=true, page="8.5,11", ratio=fill, center=1];\n';
+        dot += '  ranksep="0.0 equally";\n';
+        dot += 'layout=dot; size="8.5,11";ratio=fill;center=1;\n';
         dot += '  node [shape=box, colorscheme=paired12, width=0.9, height=0.9, fixedsize=true];\n';
         //dot += '  node [shape=plaintext, colorscheme=paired12];\n';
         dot += '  edge [style=invis,fontsize=9];\n';
         dot += '  splines=line;\n';
+        dot += '  graph [layout=dot,fontsize=200, compound=true];\n';
+        let tmp_dp = "";
 
+        //dot += 'graph [layout=dot, size="8.5,11", ratio=fill, center=1];\n';
+        //dot += 'graph [layout=dot, compound=true, page="8.5,11", ratio=fill, center=1];\n';
+        //dot += 'graph [layout=dot, page="8.5,11", ratio=fill, center=1];\n';
+        //dot += '  peripheries=2;\n';
+        //dot += '  concentrate=true;\n';
+        dot += '  justify=true;\n';
+        dot += '  dpi=96;\n';
         // Should only have one path (the one at cursor)
         if (paths.length === 0) {
             dot += '  empty [label="No timing path selected"];\n';
@@ -215,6 +217,7 @@ export class TimingGraphPanel {
         }
         
         tmp_dp += `}\n`;
+        tmp_dp += `}\n`;
 
         // spartan3e 1200 - draw array box (slices) with lines between
         let xy_copy = [];
@@ -225,7 +228,8 @@ export class TimingGraphPanel {
         xy_copy = [...new Set(xy_copy)]; // rm duplicates slices, without this we have space for edge to the same slice (if some exists)
         console.log ("xy_copy "+xy_copy);
         //console.log (xy_copy.join (","));
-        dot += `subgraph cluster_left {\nsubgraph cluster_device_slices {\n`;
+        dot += `subgraph cluster_left {style=filled;bgcolor="/rdylgn11/1:/rdylgn11/11"; gradientangle=135; subgraph cluster_device_slices {style=filled;
+        fillcolor="#ffffff00";\n`;
         //dot += `edge [style = invis, arrowsize=0.1, penwidth=0.5, arrowhead="vee"];\n`;
         //dot += `nodesep = 0;\n`;
         //dot += `ranksep = 0;\n`;
@@ -233,7 +237,7 @@ export class TimingGraphPanel {
         let edges_tmp = String ();
         let color_i = 0;
         let colors=["red", "green", "blue", "brown", "darkorange", "gold4"];
-        let first, last;
+        let first, last, end_corner;
         if (path.pathElements && path.pathElements.length > 0) {
           let prevNode = null;
           for (let i = 0; i < xy_copy.length; i++) {
@@ -266,22 +270,28 @@ export class TimingGraphPanel {
         //dot += `!!!!!!!!!DEBUG!!!!!!!!!!!!`;
         let xb=92;
         let yb=120;
-        let urc=`X${xb}Y${yb}`; // U-R
-        let ulc=`X${xb}Y0`; // U-L
-        let lrc=`X0Y${yb}`; // L-R
+        let urc=`X${xb-1}Y${yb-1}`; // U-R
+        let ulc=`X${xb-1}Y0`; // U-L
+        let lrc=`X0Y${yb-1}`; // L-R
         let llc=`X0Y0`; // start, L-L
         let x_s = "";
         dot += '  peripheries=0;\n';
-        for (let y = 0; y < yb; y++) {
+        for (let x = 0; x < xb; x++) {
           let x_string: any[] = [];
-          dot += `subgraph cluster_node_${y} {\n`;
-          for (let x = xb - 1; x >= 0; x--) {
+          dot += `subgraph cluster_node_${x} {\n`;
+        for (let y = 0; y < yb; y++) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
             //margin=0, width=0, height=0, // points
             let vis = xy_copy.join(",").includes (xy.toUpperCase()+",");
             if ((x == 0 && y == 0) || xy == first || xy == last) {
               dot += `node [group=g${y}] ${xy} [style=filled, fillcolor=black, label=""];\n`;
+            //} else if (xy == urc) {
+            //  dot += `node [group=g${y}] ${xy} [style=filled, fillcolor=grey, label=""];\n`;
+            //} else if (xy == ulc) {
+            //  dot += `node [group=g${y}] ${xy} [style=filled, label="${xy}"];\n`;
+            //} else if (xy == lrc) {
+            //  dot += `node [group=g${y}] ${xy} [style=filled, label="${xy}"];\n`;
             } else if (vis) {
               dot += `node [group=g${y}] ${xy} [label="", style=vis];\n`;
             } else {
@@ -291,7 +301,7 @@ export class TimingGraphPanel {
           }
           dot += `}\n`;
           const x_s_tmp = x_string.join (" -> ");
-          x_s += `subgraph cluster_${y} {\n`;
+          x_s += `subgraph cluster_${x} {\n`;
           x_s += `${x_s_tmp};\n`;
           x_s += `}\n`;
         }
@@ -301,9 +311,9 @@ export class TimingGraphPanel {
         //console.log (x_s);
         dot += `subgraph cluster_main_1 {\n`;
         let x_r = "";
-        for (let x = xb - 1; x >= 0; x--) {
-          let x_rank: any[] = [];
           for (let y = 0; y < yb; y++) {
+          let x_rank: any[] = [];
+        for (let x = 0; x < xb; x++) {
             let xy = `X${x}Y${y}`;
             let yx = `Y${y}X${x}`;
             x_rank.push (`${xy}`);
@@ -316,12 +326,11 @@ export class TimingGraphPanel {
         dot += `}\n`;
         dot += `}\n`;
         //console.log (x_r);
-        dot += `edge[style=solid, penwidth=10, constraint=false];\n`;
+        dot += `edge[style=solid, penwidth=20, constraint=false];\n`;
         dot += edges_tmp; 
         console.log (edges_tmp);
         dot += `}\n`;
-        dot += tmp_dp;
-        dot += `}\n`;
+        //dot += tmp_dp;
         dot += `labelloc="t";\n`;
         dot += `label="${path.failed ? '❌' : '✅'} Timing Path: ${path.source} → ${path.destination}\\nSlack: ${path.slack.toFixed(3)}ns | Delay: ${path.delay.toFixed(3)}ns";\n`;
         dot += `}\n\n`;
